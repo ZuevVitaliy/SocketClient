@@ -1,4 +1,6 @@
-﻿using System.Net.Sockets;
+﻿using Infrastructure;
+using Infrastructure.PubSub;
+using System.Net.Sockets;
 using System.Text;
 
 namespace SocketClient
@@ -11,7 +13,12 @@ namespace SocketClient
 
             //SocketClientMethod();
 
-            Console.ReadLine();
+            while (true)
+            {
+                Thread.Sleep(1000);
+                //var exitMessage = Console.ReadLine();
+                //if (exitMessage == "exit") break;
+            }
         }
 
         private static async Task SimpleSocketClient()
@@ -25,12 +32,30 @@ namespace SocketClient
                 {
                     await socket.ConnectAsync("127.0.0.1", 8888);
                     Console.WriteLine($"Подключение к {socket.RemoteEndPoint} установлено.");
+
+                    string sendMessage = Console.ReadLine() + '\n';
+                    byte[] sendBytes = Encoding.UTF8.GetBytes(sendMessage);
+                    await socket.SendAsync(sendBytes, SocketFlags.Partial);
+
+                    var buffer = new List<byte>();
+                    var bytesReadBuffer = new byte[1];
+                    while (true)
+                    {
+                        var bytesCount = await socket
+                        .ReceiveAsync(bytesReadBuffer, SocketFlags.Partial);
+                        if (bytesCount == 0) break;
+                        buffer.Add(bytesReadBuffer[0]);
+                    }
+                    string receivedMessage =
+                        Encoding.UTF8.GetString(buffer.ToArray());
+                    Console.WriteLine(receivedMessage);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Не удалось установить подключение {socket.RemoteEndPoint}.");
                 }
             }
+            Environment.Exit(0);
         }
 
         private static async Task SocketClientMethod()
