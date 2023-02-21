@@ -1,61 +1,41 @@
-﻿using Infrastructure;
-using Infrastructure.PubSub;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
+using Infrastructure.Extensions;
 
 namespace SocketClient
 {
-    internal class Program
+    internal class ClientProgram
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            SimpleSocketClient();
+            await SimpleSocketClient();
 
             //SocketClientMethod();
-
-            while (true)
-            {
-                Thread.Sleep(1000);
-                //var exitMessage = Console.ReadLine();
-                //if (exitMessage == "exit") break;
-            }
+            Console.ReadLine();
         }
 
         private static async Task SimpleSocketClient()
         {
-            using (var socket = new Socket(
-                AddressFamily.InterNetwork,
-                SocketType.Stream, 
-                ProtocolType.Tcp))
+            using (var tcpClient = new TcpClient())
             {
-                try
+                await tcpClient.ConnectAsync("127.0.0.1", 8888);
+                Console.WriteLine($"Подключение к {tcpClient.Client.RemoteEndPoint} установлено.");
+                while (true)
                 {
-                    await socket.ConnectAsync("127.0.0.1", 8888);
-                    Console.WriteLine($"Подключение к {socket.RemoteEndPoint} установлено.");
-
-                    string sendMessage = Console.ReadLine() + '\n';
-                    byte[] sendBytes = Encoding.UTF8.GetBytes(sendMessage);
-                    await socket.SendAsync(sendBytes, SocketFlags.Partial);
-
-                    var buffer = new List<byte>();
-                    var bytesReadBuffer = new byte[1];
-                    while (true)
+                    try
                     {
-                        var bytesCount = await socket
-                        .ReceiveAsync(bytesReadBuffer, SocketFlags.Partial);
-                        if (bytesCount == 0) break;
-                        buffer.Add(bytesReadBuffer[0]);
+                        var message = Console.ReadLine();
+                        await tcpClient.SendMessageAsync(message);
+
+                        var receivedMessage = await tcpClient.ReceiveMessageAsync();
+                        Console.WriteLine(receivedMessage);
                     }
-                    string receivedMessage =
-                        Encoding.UTF8.GetString(buffer.ToArray());
-                    Console.WriteLine(receivedMessage);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Не удалось установить подключение {socket.RemoteEndPoint}.");
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Не удалось установить подключение {tcpClient.Client.RemoteEndPoint}.");
+                    }
                 }
             }
-            Environment.Exit(0);
         }
 
         private static async Task SocketClientMethod()
